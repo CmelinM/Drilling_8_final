@@ -16,7 +16,10 @@ BootcampController.create = async (req, res) => {
 BootcampController.getAll = async (req, res) => {
   try {
     const bootcamps = await Bootcamp.findAll({
-      include: [{ model: User }], 
+      include: [{
+        model: User,
+        as: 'users'  // Especificamos el alias que definimos en el modelo
+      }]
     });
 
     if (!bootcamps.length) {
@@ -35,7 +38,10 @@ BootcampController.findById = async (req, res) => {
     const { id } = req.params;
 
     const bootcamp = await Bootcamp.findByPk(id, {
-      include: [{ model: User }], 
+      include: [{
+        model: User,
+        as: 'users'  // Especificamos el alias que definimos en el modelo
+      }]
     });
 
     if (!bootcamp) {
@@ -87,19 +93,39 @@ BootcampController.delete = async (req, res) => {
 // Agregar un Usuario al Bootcamp
 BootcampController.addUser = async (req, res) => {
   try {
-    const { bootcampId, userId } = req.params;
+    const { bootcampId, userId } = req.body;
 
+    // Buscar el bootcamp
     const bootcamp = await Bootcamp.findByPk(bootcampId);
-    const user = await User.findByPk(userId);
-
-    if (!bootcamp || !user) {
-      return res.status(404).json({ message: "Bootcamp o Usuario no encontrado." });
+    if (!bootcamp) {
+      return res.status(404).json({ message: "Bootcamp no encontrado" });
     }
 
+    // Buscar el usuario
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Agregar el usuario al bootcamp
     await bootcamp.addUser(user);
-    res.status(200).json({ message: "Usuario agregado al Bootcamp con éxito" });
+
+    // Obtener el bootcamp actualizado con sus usuarios
+    const updatedBootcamp = await Bootcamp.findByPk(bootcampId, {
+      include: [{
+        model: User,
+        as: "users",
+        attributes: ["id", "firstName", "lastName", "email"],
+        through: { attributes: [] }
+      }]
+    });
+
+    res.status(200).json(updatedBootcamp);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error al agregar usuario al bootcamp:', error);
+    res.status(500).json({
+      message: error.message || "Error al agregar usuario al bootcamp"
+    });
   }
 };
 
@@ -108,7 +134,10 @@ BootcampController.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findByPk(id, {
-      include: [{ model: Bootcamp }],
+      include: [{ 
+        model: Bootcamp,
+        as: 'bootcamps'  // Agregamos el alias
+      }],
     });
 
     if (!user) {
@@ -124,7 +153,10 @@ BootcampController.getUserById = async (req, res) => {
 BootcampController.getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll({
-      include: [{ model: Bootcamp }],
+      include: [{ 
+        model: Bootcamp,
+        as: 'bootcamps'  // Agregamos el alias
+      }],
     });
     res.status(200).json(users);
   } catch (error) {

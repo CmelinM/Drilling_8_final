@@ -1,30 +1,37 @@
+const bcrypt = require('bcryptjs');
+
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
+  const User = sequelize.define("users", {
     firstName: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: 'El nombre es obligatorio' },
-      },
+      allowNull: false
     },
     lastName: {
       type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: 'El apellido es obligatorio' },
-      },
+      allowNull: false
     },
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: { msg: 'El correo ya está registrado' },
+      unique: true,
       validate: {
-        isEmail: { msg: 'El correo no tiene un formato válido' },
-        notEmpty: { msg: 'El correo es obligatorio' },
-      },
+        isEmail: true
+      }
     },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false
+    }
   }, {
-    tableName: 'users',  // Nombre base de datos
+    tableName: 'users',
+    hooks: {
+      beforeCreate: async (user) => {
+        if (user.password) {
+          const salt = await bcrypt.genSalt(8);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
+      }
+    }
   });
 
   User.prototype.getSafeInfo = function() {
@@ -32,10 +39,16 @@ module.exports = (sequelize, DataTypes) => {
     return safeInfo;
   };
 
-  User.associate = (models) => {
-    // Relación muchos a muchos con Bootcamp
-    console.log("Asociando User con Bootcamp...");
-    User.belongsToMany(models.Bootcamp, { through: 'user_bootcamp', foreignKey: 'user_id', otherKey: 'bootcamp_id' });
+  User.prototype.validPassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
+  };
+
+  User.associate = function(models) {
+    User.belongsToMany(models.bootcamps, {
+      through: "user_bootcamp",
+      as: "bootcamps",
+      foreignKey: "user_id"
+    });
   };
 
   return User;
