@@ -81,7 +81,7 @@
         const token = jwt.sign(
         { id: user.id },
         config.secret,
-        { expiresIn: '10m' }
+        { expiresIn: '1m' }
         );
 
         res.status(200).json({
